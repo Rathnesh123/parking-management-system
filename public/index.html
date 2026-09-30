@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartPark - Parking Management System</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Header / Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <span class="brand-icon">🅿️</span>
+        <div class="brand-text">
+          <h1>SmartPark</h1>
+          <span class="subtitle">Parking Management System</span>
+        </div>
+      </div>
+
+      <nav class="nav-links">
+        <button class="nav-btn active" data-tab="dashboard">
+          <span class="icon">📊</span> Dashboard
+        </button>
+        <button class="nav-btn" data-tab="vehicles">
+          <span class="icon">🚗</span> Vehicles
+        </button>
+        <button class="nav-btn" data-tab="slots">
+          <span class="icon">🏷️</span> Parking Slots
+        </button>
+        <button class="nav-btn" data-tab="entry">
+          <span class="icon">📥</span> Vehicle Entry
+        </button>
+        <button class="nav-btn" data-tab="exit">
+          <span class="icon">📤</span> Vehicle Exit
+        </button>
+        <button class="nav-btn" data-tab="history">
+          <span class="icon">📜</span> History
+        </button>
+      </nav>
+
+      <div class="system-status">
+        <span class="status-dot"></span>
+        <span class="status-text" id="dbStatus">MongoDB Connected</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notification Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Main Content Container -->
+  <main class="main-content">
+    
+    <!-- ================= 1. DASHBOARD TAB ================= -->
+    <section id="dashboard" class="tab-pane active">
+      <div class="section-header">
+        <div>
+          <h2>System Dashboard</h2>
+          <p class="section-desc">Real-time overview of parking lot availability and vehicle statistics</p>
+        </div>
+        <div class="quick-actions">
+          <button class="btn btn-primary" onclick="switchTab('entry')">➕ Park Vehicle</button>
+          <button class="btn btn-secondary" onclick="switchTab('exit')">📤 Process Exit</button>
+        </div>
+      </div>
+
+      <!-- Stat Cards Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon bg-blue">🅿️</div>
+          <div class="stat-details">
+            <span class="stat-label">Total Slots</span>
+            <h3 class="stat-value" id="statTotalSlots">0</h3>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon bg-green">🟢</div>
+          <div class="stat-details">
+            <span class="stat-label">Available Slots</span>
+            <h3 class="stat-value text-green" id="statAvailableSlots">0</h3>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon bg-red">🔴</div>
+          <div class="stat-details">
+            <span class="stat-label">Occupied Slots</span>
+            <h3 class="stat-value text-red" id="statOccupiedSlots">0</h3>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon bg-purple">🚙</div>
+          <div class="stat-details">
+            <span class="stat-label">Total Vehicles</span>
+            <h3 class="stat-value text-purple" id="statTotalVehicles">0</h3>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slot Layout Visual Overview -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <h3>🅿️ Parking Slot Floor Map</h3>
+          <div class="legend">
+            <span class="legend-item"><span class="badge badge-success"></span> Available</span>
+            <span class="legend-item"><span class="badge badge-danger"></span> Occupied</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="dashboardSlotsGrid" class="slots-visual-grid">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Currently Parked Vehicles Table -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <h3>🚘 Currently Parked Vehicles</h3>
+          <span class="badge badge-primary" id="activeCountBadge">0 Parked</span>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Slot</th>
+                  <th>Vehicle Number</th>
+                  <th>Type</th>
+                  <th>Owner</th>
+                  <th>Phone</th>
+                  <th>Entry Time</th>
+                  <th>Duration</th>
+                  <th>Est. Fee</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="activeParkedTableBody">
+                <tr><td colspan="9" class="text-center py-4">Loading active vehicles...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 2. VEHICLE MANAGEMENT TAB ================= -->
+    <section id="vehicles" class="tab-pane">
+      <div class="section-header">
+        <div>
+          <h2>Vehicle Management</h2>
+          <p class="section-desc">Register, view, and manage customer vehicles</p>
+        </div>
+      </div>
+
+      <div class="grid-2col">
+        <!-- Add Vehicle Form Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3>➕ Add New Vehicle</h3>
+          </div>
+          <div class="card-body">
+            <form id="addVehicleForm">
+              <div class="form-group">
+                <label for="vehicleNumber">Vehicle Number <span class="required">*</span></label>
+                <input 
+                  type="text" 
+                  id="vehicleNumber" 
+                  name="vehicleNumber" 
+                  placeholder="e.g. KA-01-AB-1234" 
+                  required 
+                  class="form-control"
+                  style="text-transform: uppercase;"
+                >
+                <small class="help-text">Unique state registration or license plate number</small>
+              </div>
+
+              <div class="form-group">
+                <label for="ownerName">Owner Name <span class="required">*</span></label>
+                <input 
+                  type="text" 
+                  id="ownerName" 
+                  name="ownerName" 
+                  placeholder="e.g. Rahul Sharma" 
+                  required 
+                  class="form-control"
+                >
+              </div>
+
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label for="vehicleType">Vehicle Type <span class="required">*</span></label>
+                  <select id="vehicleType" name="vehicleType" class="form-control">
+                    <option value="Car">🚗 Car</option>
+                    <option value="Bike">🏍️ Bike</option>
+                    <option value="SUV">🚙 SUV</option>
+                    <option value="Truck">🚚 Truck</option>
+                    <option value="Other">🚐 Other</option>
+                  </select>
+                </div>
+
+                <div class="form-group flex-1">
+                  <label for="phone">Phone Number <span class="required">*</span></label>
+                  <input 
+                    type="tel" 
+                    id="phone" 
+                    name="phone" 
+                    placeholder="e.g. 9876543210" 
+                    required 
+                    class="form-control"
+                  >
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-block">Save Vehicle</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Vehicle List Table Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3>📋 Registered Vehicles</h3>
+            <input 
+              type="text" 
+              id="searchVehicleInput" 
+              placeholder="🔍 Search vehicle or owner..." 
+              class="form-control form-control-sm"
+              style="max-width: 200px;"
+            >
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Vehicle No</th>
+                    <th>Type</th>
+                    <th>Owner</th>
+                    <th>Phone</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="vehicleTableBody">
+                  <tr><td colspan="5" class="text-center py-4">Loading vehicles...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 3. PARKING SLOTS TAB ================= -->
+    <section id="slots" class="tab-pane">
+      <div class="section-header">
+        <div>
+          <h2>Parking Slot Management</h2>
+          <p class="section-desc">Create and monitor parking slots and their live occupancy status</p>
+        </div>
+      </div>
+
+      <div class="grid-2col">
+        <!-- Add Slot Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3>➕ Add Parking Slot</h3>
+          </div>
+          <div class="card-body">
+            <form id="addSlotForm">
+              <div class="form-group">
+                <label for="slotNumber">Slot Number / Code <span class="required">*</span></label>
+                <input 
+                  type="text" 
+                  id="slotNumber" 
+                  name="slotNumber" 
+                  placeholder="e.g. A-105, B-202" 
+                  required 
+                  class="form-control"
+                  style="text-transform: uppercase;"
+                >
+                <small class="help-text">Standard naming format: Floor/Bay letter + Number</small>
+              </div>
+
+              <p class="info-box">
+                ℹ️ New slots are initialized with status <strong>Available</strong> by default.
+              </p>
+
+              <button type="submit" class="btn btn-primary btn-block">Create Parking Slot</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Slot Filter & Overview -->
+        <div class="card">
+          <div class="card-header">
+            <h3>🏷️ All Parking Slots</h3>
+            <div class="filter-group">
+              <button class="filter-btn active" data-filter="all">All</button>
+              <button class="filter-btn" data-filter="Available">Available</button>
+              <button class="filter-btn" data-filter="Occupied">Occupied</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="slotsGridContainer" class="slots-visual-grid">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 4. VEHICLE ENTRY TAB ================= -->
+    <section id="entry" class="tab-pane">
+      <div class="section-header">
+        <div>
+          <h2>Vehicle Entry (Check-In)</h2>
+          <p class="section-desc">Assign an available parking slot and record entry timestamp</p>
+        </div>
+      </div>
+
+      <div class="form-container-centered">
+        <div class="card form-card">
+          <div class="card-header bg-gradient-blue">
+            <h3>📥 Vehicle Entry Form</h3>
+            <p>Select a registered vehicle and an available slot</p>
+          </div>
+          <div class="card-body">
+            <form id="vehicleEntryForm">
+              <div class="form-group">
+                <label for="entryVehicleSelect">Select Vehicle <span class="required">*</span></label>
+                <select id="entryVehicleSelect" required class="form-control">
+                  <option value="">-- Choose Registered Vehicle --</option>
+                </select>
+                <small class="help-text">Can't find vehicle? <a href="javascript:void(0)" onclick="switchTab('vehicles')">Register it here</a></small>
+              </div>
+
+              <!-- Vehicle quick preview -->
+              <div id="entryVehiclePreview" class="preview-box hidden">
+                <div class="preview-item">
+                  <span class="label">Owner:</span>
+                  <strong id="previewOwner">-</strong>
+                </div>
+                <div class="preview-item">
+                  <span class="label">Type:</span>
+                  <strong id="previewType">-</strong>
+                </div>
+                <div class="preview-item">
+                  <span class="label">Phone:</span>
+                  <strong id="previewPhone">-</strong>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="entrySlotSelect">Select Available Slot <span class="required">*</span></label>
+                <select id="entrySlotSelect" required class="form-control">
+                  <option value="">-- Choose Available Slot --</option>
+                </select>
+                <small class="help-text">Only currently vacant slots are listed</small>
+              </div>
+
+              <div class="form-group">
+                <label for="entryTimeInput">Entry Date & Time</label>
+                <input type="datetime-local" id="entryTimeInput" class="form-control">
+                <small class="help-text">Defaults to current date & time</small>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-block btn-lg mt-3">
+                📥 Confirm Vehicle Entry
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 5. VEHICLE EXIT TAB ================= -->
+    <section id="exit" class="tab-pane">
+      <div class="section-header">
+        <div>
+          <h2>Vehicle Exit (Check-Out)</h2>
+          <p class="section-desc">Select parked vehicle, record exit time, calculate fee, and release slot</p>
+        </div>
+      </div>
+
+      <div class="form-container-centered">
+        <div class="card form-card">
+          <div class="card-header bg-gradient-amber">
+            <h3>📤 Process Vehicle Exit</h3>
+            <p>Fee Calculation Rate: <strong>₹20 per hour</strong> (Min. 1 hour)</p>
+          </div>
+          <div class="card-body">
+            <form id="vehicleExitForm">
+              <div class="form-group">
+                <label for="exitRecordSelect">Select Parked Vehicle <span class="required">*</span></label>
+                <select id="exitRecordSelect" required class="form-control">
+                  <option value="">-- Select Active Parked Vehicle --</option>
+                </select>
+              </div>
+
+              <!-- Live Calculation Preview Box -->
+              <div id="exitCalculationBox" class="calculation-summary hidden">
+                <div class="calc-row">
+                  <span>Slot Number:</span>
+                  <strong id="calcSlot">-</strong>
+                </div>
+                <div class="calc-row">
+                  <span>Vehicle Number:</span>
+                  <strong id="calcVehicle">-</strong>
+                </div>
+                <div class="calc-row">
+                  <span>Owner:</span>
+                  <strong id="calcOwner">-</strong>
+                </div>
+                <div class="calc-row">
+                  <span>Entry Time:</span>
+                  <span id="calcEntryTime">-</span>
+                </div>
+                <div class="calc-row">
+                  <span>Parked Duration:</span>
+                  <strong id="calcDuration">-</strong>
+                </div>
+                <div class="calc-row highlight">
+                  <span>Estimated Total Fee:</span>
+                  <strong class="fee-amount" id="calcFee">₹0</strong>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="exitTimeInput">Exit Date & Time</label>
+                <input type="datetime-local" id="exitTimeInput" class="form-control">
+                <small class="help-text">Defaults to current date & time</small>
+              </div>
+
+              <button type="submit" class="btn btn-success btn-block btn-lg mt-3" id="confirmExitBtn">
+                💳 Process Exit & Mark Slot Available
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 6. PARKING HISTORY TAB ================= -->
+    <section id="history" class="tab-pane">
+      <div class="section-header">
+        <div>
+          <h2>Parking History & Records</h2>
+          <p class="section-desc">Audit trail of all vehicle entries, exits, and fees collected</p>
+        </div>
+        <div class="revenue-pill">
+          <span>Total Revenue:</span>
+          <strong id="totalRevenuePill">₹0</strong>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>📜 All Parking Logs</h3>
+          <button class="btn btn-sm btn-secondary" onclick="loadHistory()">🔄 Refresh</button>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Vehicle Number</th>
+                  <th>Slot</th>
+                  <th>Entry Time</th>
+                  <th>Exit Time</th>
+                  <th>Fee Paid</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <tr><td colspan="6" class="text-center py-4">Loading history records...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= RECEIPT MODAL ================= -->
+  <div id="receiptModal" class="modal-overlay hidden">
+    <div class="modal-card receipt-card">
+      <div class="receipt-header">
+        <span class="receipt-icon">🅿️</span>
+        <h3>SmartPark Receipt</h3>
+        <p>Parking Fee Summary</p>
+      </div>
+      <div class="receipt-divider"></div>
+      <div class="receipt-details">
+        <div class="receipt-row">
+          <span>Vehicle Number:</span>
+          <strong id="rcptVehicle">--</strong>
+        </div>
+        <div class="receipt-row">
+          <span>Vehicle Type:</span>
+          <span id="rcptType">--</span>
+        </div>
+        <div class="receipt-row">
+          <span>Owner Name:</span>
+          <span id="rcptOwner">--</span>
+        </div>
+        <div class="receipt-row">
+          <span>Slot Assigned:</span>
+          <strong id="rcptSlot">--</strong>
+        </div>
+        <div class="receipt-row">
+          <span>Entry Time:</span>
+          <span id="rcptEntry">--</span>
+        </div>
+        <div class="receipt-row">
+          <span>Exit Time:</span>
+          <span id="rcptExit">--</span>
+        </div>
+        <div class="receipt-row">
+          <span>Billed Hours:</span>
+          <span id="rcptHours">--</span>
+        </div>
+        <div class="receipt-divider"></div>
+        <div class="receipt-row receipt-total">
+          <span>Total Fee:</span>
+          <strong class="text-green" id="rcptFee">₹0</strong>
+        </div>
+      </div>
+      <div class="receipt-actions">
+        <button class="btn btn-secondary btn-block" onclick="window.print()">🖨️ Print Receipt</button>
+        <button class="btn btn-primary btn-block" onclick="closeReceiptModal()">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
